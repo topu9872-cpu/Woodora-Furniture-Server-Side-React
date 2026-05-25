@@ -4,14 +4,10 @@ const { mongodbAdapter } = require("better-auth/adapters/mongodb");
 
 const client = new MongoClient(process.env.MONGODB_URI);
 
-let db;
-
 async function initDB() {
   await client.connect();
-  db = client.db("Woodora-user");
   console.log("Auth DB connected 🚀");
 }
-
 const auth = betterAuth({
   database: mongodbAdapter(client.db("Woodora-user"), {
     client,
@@ -22,9 +18,19 @@ const auth = betterAuth({
   },
 
   trustedOrigins: ["http://localhost:5173"],
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    },
+  },
 });
 
-// ✅ IMPORTANT: ensure DB connects before export usage
 initDB();
 
 module.exports = { auth };
