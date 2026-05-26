@@ -1,93 +1,98 @@
 require('dotenv').config();
-const express=require('express');
-const cors=require('cors');
-const app=express();
-
+const express = require('express');
+const cors = require('cors');
 const { toNodeHandler } = require("better-auth/node");
 const { auth } = require("./auth");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+const app = express();
+const port = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
+    origin: "http://localhost:5173",
+    credentials: true
 }));
 app.use(express.json());
-port=5000;
-const uri=process.env.MONGODB_URI;
-
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
-
-
-
-async function run() {
-
-  const client = new MongoClient(uri);
-
-  try {
-
-    await client.connect();
-  
-   const db = client.db('Woodora-Furniture');
-    const productsCollection = db.collection('Products');
-    const AddTocartCollection = db.collection('Add_To_Cart');
 
 app.use("/api/auth", toNodeHandler(auth));
 
 
-app.get('/products/:id', async(req, res)=>{
-    const id=req.params.id;
-    const result=await productsCollection.findOne({_id: new ObjectId(id)});
-    res.json(result);
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
 });
 
-app.get('/products', async(req, res)=>{
-    const search=req.query.search;
-    console.log(search)
-    const query=search ?{name:{$regex: search, $options:'i'}} :{}
-    const result=await productsCollection.find(query).toArray();
-    res.json(result)
-})
+async function run() {
+    try {
 
-// add to cart
+        await client.connect();
+        console.log("Successfully connected to MongoDB!");
 
-app.post('/cart', async(req, res)=>{
-    const data=req.body;
-const result=await AddTocartCollection.insertOne(data)
-res.json(result)
-})
-
-app.get('/cart', async(req, res)=>{
-    const result=await AddTocartCollection.find().toArray();
-    res.json(result);
-})
-
-app.delete('/cart/:id', async(req,res)=>{
-    const {id}=req.params;
-    const result=await AddTocartCollection.deleteOne({_id: new ObjectId(id)});
-    res.json(result)
-});
+        const db = client.db('Woodora-Furniture');
+        const productsCollection = db.collection('Products');
+        const AddTocartCollection = db.collection('Add_To_Cart');
 
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-   
-    // await client.close();
-  }
+
+        // Products Routes
+        app.get('/products/:id', async (req, res) => {
+
+            const id = req.params.id;
+            const result = await productsCollection.findOne({ _id: new ObjectId(id) });
+            res.json(result);
+
+        });
+
+        app.get('/products', async (req, res) => {
+            const search = req.query.search;
+            const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+            const result = await productsCollection.find(query).toArray();
+            res.json(result);
+        });
+        // admin product delete
+        app.delete('/products/:id', async (req, res) => {
+            const { id } = req.params;
+            const result = await productsCollection.deleteOne({ _id: new ObjectId(id) })
+            res.json(result)
+        })
+
+        // Cart Routes
+        app.post('/cart', async (req, res) => {
+            const data = req.body;
+            const result = await AddTocartCollection.insertOne(data);
+            res.json(result);
+        });
+
+        app.get('/cart', async (req, res) => {
+            const result = await AddTocartCollection.find().toArray();
+            res.json(result);
+        });
+
+        app.delete('/cart/:id', async (req, res) => {
+
+            const { id } = req.params;
+            const result = await AddTocartCollection.deleteOne({ _id: new ObjectId(id) });
+            res.json(result);
+
+        });
+        await client.db("admin").command({ ping: 1 });
+
+    } catch (error) {
+        console.error("Database connection error:", error);
+    }
 }
+
 run().catch(console.dir);
 
-
-app.get('/',async(req,res)=>{
-    res.json('hello world')
+app.get('/', async (req, res) => {
+    res.json('hello world');
 });
-app.listen(port,()=>{
-    console.log(`Example app listening on port ${port}`)
-})
+
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`);
+});
