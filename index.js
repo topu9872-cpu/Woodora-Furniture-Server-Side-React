@@ -54,12 +54,23 @@ async function run() {
             const result = await productsCollection.find(query).toArray();
             res.json(result);
         });
+
         // admin product delete
         app.delete('/products/:id', async (req, res) => {
             const { id } = req.params;
             const result = await productsCollection.deleteOne({ _id: new ObjectId(id) })
             res.json(result)
+        });
+
+
+        app.patch('/products/:id', async (req, res) => {
+            const { id } = req.params;
+            const updateData = req.body;
+            const result = await productsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateData });
+            res.json(result);
         })
+
+
 
         // Cart Routes
         app.post('/cart', async (req, res) => {
