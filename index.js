@@ -4,6 +4,7 @@ const cors = require('cors');
 const { toNodeHandler } = require("better-auth/node");
 const { auth } = require("./auth");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -26,6 +27,43 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+
+
+const JWKS = createRemoteJWKSet(
+    new URL(`${process.env.VITE_SERVER_PUBLIC_URL}/api/auth/jwks`));
+
+
+const varifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+
+    if (!authHeader) {
+        return res.status(401).json({
+            message: 'user Unauthorizad'
+        })
+    }
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({
+            message: 'Unauthorized'
+        })
+    }
+    try {
+        const { payload } = await jwtVerify(token, JWKS);
+        req.user = payload;
+        next();
+    } catch (error) {
+        return res.status(403).json({
+            message: 'Forbidden access'
+        })
+    }
+}
+
+
+
+
+
 
 async function run() {
     try {
@@ -73,7 +111,7 @@ async function run() {
 
 
         // Cart Routes
-        app.post('/cart', async (req, res) => {
+        app.post('/cart', varifyToken , async (req, res) => {
             const data = req.body;
             const result = await AddTocartCollection.insertOne(data);
             res.json(result);

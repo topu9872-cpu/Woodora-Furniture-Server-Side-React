@@ -1,11 +1,12 @@
 const { betterAuth } = require("better-auth");
 const { MongoClient } = require("mongodb");
 const { mongodbAdapter } = require("better-auth/adapters/mongodb");
+const { jwt } = require("better-auth/plugins");
 
 const client = new MongoClient(process.env.MONGODB_URI);
 
 async function initDB() {
-    await client.connect();
+  await client.connect();
 }
 
 const auth = betterAuth({
@@ -19,9 +20,9 @@ const auth = betterAuth({
   },
 
   trustedOrigins: [
-  "http://localhost:5173",
-  "http://localhost:5000"
-],
+    "http://localhost:5173",
+    "http://localhost:5000"
+  ],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -33,6 +34,16 @@ const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
     },
   },
+  session: {
+    cookieCache: {
+      enabled: true,
+      strategy: 'jwt',
+      maxAge: 30 * 24 * 60 * 60 //30 days
+    }
+  },
+  plugins: [
+    jwt()
+  ]
 });
 
 initDB();
