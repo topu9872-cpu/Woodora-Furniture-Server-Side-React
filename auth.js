@@ -11,9 +11,25 @@ async function initDB() {
 
 const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
+
   database: mongodbAdapter(client.db("Woodora-user"), {
     client,
   }),
+
+  user: {
+    additionalFields: {
+      phone: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+      location: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+    },
+  },
 
   emailAndPassword: {
     enabled: true,
@@ -21,31 +37,21 @@ const auth = betterAuth({
 
   trustedOrigins: [
     "http://localhost:5173",
-    "http://localhost:5000"
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
   ],
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
-
     github: {
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
     },
   },
-  session: {
-    cookieCache: {
-      enabled: true,
-      strategy: 'jwt',
-      maxAge: 30 * 24 * 60 * 60 //30 days
-    }
-  },
-  plugins: [
-    jwt()
-  ]
 });
-
 initDB();
 
 module.exports = { auth };

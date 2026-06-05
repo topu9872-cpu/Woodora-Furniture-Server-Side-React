@@ -29,7 +29,6 @@ const client = new MongoClient(uri, {
 });
 
 
-
 const JWKS = createRemoteJWKSet(
     new URL(`${process.env.VITE_SERVER_PUBLIC_URL}/api/auth/jwks`));
 
@@ -111,7 +110,7 @@ async function run() {
 
 
         // Cart Routes
-        app.post('/cart', varifyToken , async (req, res) => {
+        app.post('/cart', async (req, res) => {
             const data = req.body;
             const result = await AddTocartCollection.insertOne(data);
             res.json(result);
