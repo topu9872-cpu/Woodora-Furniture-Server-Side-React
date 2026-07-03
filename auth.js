@@ -12,7 +12,7 @@ async function initDB() {
 const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
 
-  database: mongodbAdapter(client.db("Woodora-user"), {
+  database: mongodbAdapter(client.db("Woodora-Furniture"), {
     client,
   }),
 
