@@ -114,6 +114,13 @@ async function run() {
       const result = await AddTocartCollection.find().toArray();
       res.json(result);
     });
+    app.get("/customars-cart/:email", async (req, res) => {
+        const {email}=req.params
+      const result = await AddTocartCollection.find({email:email}).toArray();
+            
+
+      res.json(result);
+    });
 
     app.delete("/cart/:id", async (req, res) => {
       const { id } = req.params;
@@ -124,13 +131,15 @@ async function run() {
     });
 
     app.get("/user/:email", async (req, res) => {
-    const email=req.params
+      const email = req.params;
       const result = await UserCollection.findOne(email);
       res.json(result);
     });
 
-
-
+    app.get("/user", async (req, res) => {
+      const result = await UserCollection.find().toArray();
+      res.json(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
   } catch (error) {
