@@ -11,6 +11,7 @@ async function initDB() {
 
 const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
 
   database: mongodbAdapter(client.db("Woodora-Furniture"), {
     client,
@@ -36,11 +37,8 @@ const auth = betterAuth({
   },
 
   trustedOrigins: [
-   ' https://woodora-furniture-client-side.vercel.app',
-  
-    "https://woodora-furniture-server-side-react.vercel.app",
-  ],
-
+  "https://woodora-furniture-client-side.vercel.app",
+],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,

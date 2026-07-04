@@ -12,10 +12,11 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin:process.env.VITE_SERVER_PUBLIC_URL,
+    origin:"https://woodora-furniture-client-side.vercel.app",
     credentials: true,
   }),
 );
+
 app.use(express.json());
 
 app.use("/api/auth", toNodeHandler(auth));
