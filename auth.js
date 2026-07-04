@@ -1,7 +1,7 @@
-const { betterAuth } = require("better-auth");
-const { MongoClient } = require("mongodb");
-const { mongodbAdapter } = require("better-auth/adapters/mongodb");
-const { jwt } = require("better-auth/plugins");
+import { betterAuth } from "better-auth";
+import { MongoClient } from "mongodb";
+import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { jwt } from "better-auth/plugins";
 
 const client = new MongoClient(process.env.MONGODB_URI);
 
@@ -36,9 +36,9 @@ const auth = betterAuth({
   },
 
   trustedOrigins: [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",
+   ' https://woodora-furniture-client-side.vercel.app',
+  
+    "https://woodora-furniture-server-side-react.vercel.app",
   ],
 
   socialProviders: {
@@ -54,4 +54,4 @@ const auth = betterAuth({
 });
 initDB();
 
-module.exports = { auth };
+export { auth };

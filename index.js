@@ -1,18 +1,18 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { toNodeHandler } = require("better-auth/node");
-const { auth } = require("./auth");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { auth } from "./auth.js";
+import { toNodeHandler } from "better-auth/node";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const app = express();
+  const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:process.env.VITE_SERVER_PUBLIC_URL,
     credentials: true,
   }),
 );
@@ -60,7 +60,7 @@ const varifyToken = async (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     console.log("Successfully connected to MongoDB!");
 
     const db = client.db("Woodora-Furniture");
@@ -70,7 +70,7 @@ async function run() {
 
     // Products Routes
     app.get("/products/:id", async (req, res) => {
-      const id = req.params.id;
+      const {id }= req.params;
       const result = await productsCollection.findOne({
         _id: new ObjectId(id),
       });
@@ -85,7 +85,7 @@ async function run() {
     });
 
     // admin product delete
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/products/:id",varifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await productsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -93,7 +93,7 @@ async function run() {
       res.json(result);
     });
 
-    app.patch("/products/:id", async (req, res) => {
+    app.patch("/products/:id",varifyToken, async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
       const result = await productsCollection.updateOne(
@@ -104,17 +104,17 @@ async function run() {
     });
 
     // Cart Routes
-    app.post("/cart", async (req, res) => {
+    app.post("/cart",varifyToken, async (req, res) => {
       const data = req.body;
       const result = await AddTocartCollection.insertOne(data);
       res.json(result);
     });
 
-    app.get("/cart", async (req, res) => {
+    app.get("/cart",varifyToken, async (req, res) => {
       const result = await AddTocartCollection.find().toArray();
       res.json(result);
     });
-    app.get("/customars-cart/:email", async (req, res) => {
+    app.get("/customars-cart/:email",varifyToken, async (req, res) => {
         const {email}=req.params
       const result = await AddTocartCollection.find({email:email}).toArray();
             
@@ -122,7 +122,7 @@ async function run() {
       res.json(result);
     });
 
-    app.delete("/cart/:id", async (req, res) => {
+    app.delete("/cart/:id",varifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await AddTocartCollection.deleteOne({
         _id: new ObjectId(id),
@@ -130,18 +130,18 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email",varifyToken, async (req, res) => {
       const email = req.params;
       const result = await UserCollection.findOne(email);
       res.json(result);
     });
 
-    app.get("/user", async (req, res) => {
+    app.get("/user", varifyToken, async (req, res) => {
       const result = await UserCollection.find().toArray();
       res.json(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
   } catch (error) {
     console.error("Database connection error:", error);
   }
@@ -156,3 +156,4 @@ app.get("/", async (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
