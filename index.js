@@ -275,7 +275,15 @@ app.get("/user", varifyToken, async (req, res, next) => {
 });
 
 app.get("/", async (req, res) => {
-  res.json("hello world");
+  try {
+    await Promise.race([
+      ensureCollections(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Database startup timeout")), 3000)),
+    ]);
+    res.json("hello world");
+  } catch (error) {
+    res.json({ status: "ok", message: "Service is warming up" });
+  }
 });
 
 app.use((err, req, res, next) => {
