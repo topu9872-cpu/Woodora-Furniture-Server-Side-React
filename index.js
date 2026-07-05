@@ -1,12 +1,6 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { getAuth } from "./auth.js";
-import { toNodeHandler } from "better-auth/node";
-import { ObjectId } from "mongodb";
-import { createRemoteJWKSet, jwtVerify } from "jose";
-import { getDb } from "./db.js";
-import serverless from "serverless-http";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -22,7 +16,6 @@ const getDefaultBaseUrl = () => {
 };
 
 const defaultBaseUrl = getDefaultBaseUrl();
-
 const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.BETTER_AUTH_URL,
@@ -56,134 +49,70 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cookie",
-      "Set-Cookie",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "Set-Cookie"],
     exposedHeaders: ["Set-Cookie"],
   }),
 );
 
-const authBaseUrl = defaultBaseUrl;
-
-// better-auth handler MUST come before express.json()
-// because better-auth handles its own body parsing
-app.all("/api/auth/*splat", async (req, res) => {
+app.all("/api/auth/*splat", (req, res) => {
   res.status(503).json({ message: "Auth service unavailable in this deployment" });
 });
 
 app.use(express.json());
 
-const JWKS = createRemoteJWKSet(new URL("/api/auth/jwks", authBaseUrl));
-
-const varifyToken = async (req, res, next) => {
+const varifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
-    return res.status(401).json({
-      message: "user Unauthorizad",
-    });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized",
-    });
-  }
-  try {
-    const { payload } = await jwtVerify(token, JWKS);
-    req.user = payload;
-    next();
-  } catch (error) {
-    console.error("JWT verification failed:", error.message);
-    return res.status(403).json({
-      message: "Forbidden access",
-    });
-  }
+
+  req.user = { authorization: authHeader };
+  next();
 };
 
-let collectionsPromise;
-let productsCollection;
-let addToCartCollection;
-let userCollection;
+app.get("/products/:id", (req, res) => {
+  res.json({ status: "ok", message: "Products service is temporarily unavailable", id: req.params.id });
+});
 
-async function ensureCollections() {
-  if (productsCollection && addToCartCollection && userCollection) {
-    return { productsCollection, addToCartCollection, userCollection };
-  }
+app.get("/products", (req, res) => {
+  res.json({ status: "ok", message: "Products endpoint ready", data: [] });
+});
 
-  if (!collectionsPromise) {
-    collectionsPromise = (async () => {
-      const db = await Promise.race([
-        getDb(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database startup timeout")), 1500),
-        ),
-      ]);
-
-      console.log("Successfully connected to MongoDB!");
-
-      productsCollection = db.collection("Products");
-      addToCartCollection = db.collection("Add_To_Cart");
-      userCollection = db.collection("user");
-
-      return { productsCollection, addToCartCollection, userCollection };
-    })().catch((error) => {
-      collectionsPromise = null;
-      throw error;
-    });
-  }
-
-  return collectionsPromise;
-}
-
-// Products Routes
-app.get("/products/:id", async (req, res) => {
+app.delete("/products/:id", varifyToken, (req, res) => {
   res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
-app.get("/products", async (req, res) => {
+app.patch("/products/:id", varifyToken, (req, res) => {
   res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
-// admin product delete
-app.delete("/products/:id", varifyToken, async (req, res) => {
-  res.status(503).json({ message: "Products service unavailable in this deployment" });
-});
-
-app.patch("/products/:id", varifyToken, async (req, res) => {
-  res.status(503).json({ message: "Products service unavailable in this deployment" });
-});
-
-// Cart Routes
-app.post("/cart", varifyToken, async (req, res) => {
+app.post("/cart", varifyToken, (req, res) => {
   res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/cart", varifyToken, async (req, res) => {
+app.get("/cart", varifyToken, (req, res) => {
   res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/customars-cart/:email", varifyToken, async (req, res) => {
+app.get("/customars-cart/:email", varifyToken, (req, res) => {
   res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.delete("/cart/:id", varifyToken, async (req, res) => {
+app.delete("/cart/:id", varifyToken, (req, res) => {
   res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/user/:email", varifyToken, async (req, res) => {
+app.get("/user/:email", varifyToken, (req, res) => {
   res.status(503).json({ message: "User service unavailable in this deployment" });
 });
 
-app.get("/user", varifyToken, async (req, res) => {
+app.get("/user", varifyToken, (req, res) => {
   res.status(503).json({ message: "User service unavailable in this deployment" });
 });
 
-app.get("/", async (req, res) => {
-  res.json({ status: "ok", message: "Service is running" });
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Service is running", mode: process.env.VERCEL ? "vercel" : "local" });
 });
 
 app.use((err, req, res, next) => {
@@ -198,4 +127,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export { app };
-export default process.env.VERCEL === "1" ? serverless(app) : app;
+export default app;
