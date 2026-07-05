@@ -109,125 +109,170 @@ const varifyToken = async (req, res, next) => {
   }
 };
 
-async function run() {
-  try {
-    await getAuth();
-    const db = await getDb();
-    console.log("Successfully connected to MongoDB!");
+let collectionsPromise;
+let productsCollection;
+let addToCartCollection;
+let userCollection;
 
-    const productsCollection = db.collection("Products");
-    const AddTocartCollection = db.collection("Add_To_Cart");
-    const UserCollection = db.collection("user");
-
-    // Products Routes
-    app.get("/products/:id", async (req, res, next) => {
-      try {
-        const { id } = req.params;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ message: "Invalid product id" });
-        }
-
-        const result = await productsCollection.findOne({
-          _id: new ObjectId(id),
-        });
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    app.get("/products", async (req, res) => {
-      const search = req.query.search;
-      const query = search ? { name: { $regex: search, $options: "i" } } : {};
-      const result = await productsCollection.find(query).toArray();
-      res.json(result);
-    });
-
-    // admin product delete
-    app.delete("/products/:id", varifyToken, async (req, res, next) => {
-      try {
-        const { id } = req.params;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ message: "Invalid product id" });
-        }
-
-        const result = await productsCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    app.patch("/products/:id", varifyToken, async (req, res, next) => {
-      try {
-        const { id } = req.params;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ message: "Invalid product id" });
-        }
-
-        const updateData = req.body;
-        const result = await productsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updateData },
-        );
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    // Cart Routes
-    app.post("/cart", varifyToken, async (req, res) => {
-      const data = req.body;
-      const result = await AddTocartCollection.insertOne(data);
-      res.json(result);
-    });
-
-    app.get("/cart", varifyToken, async (req, res) => {
-      const result = await AddTocartCollection.find().toArray();
-      res.json(result);
-    });
-
-    app.get("/customars-cart/:email", varifyToken, async (req, res) => {
-      const { email } = req.params;
-      const result = await AddTocartCollection.find({ email: email }).toArray();
-      res.json(result);
-    });
-
-    app.delete("/cart/:id", varifyToken, async (req, res, next) => {
-      try {
-        const { id } = req.params;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ message: "Invalid cart id" });
-        }
-
-        const result = await AddTocartCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    app.get("/user/:email", varifyToken, async (req, res) => {
-      const { email } = req.params;
-      const result = await UserCollection.findOne({ email });
-      res.json(result);
-    });
-
-    app.get("/user", varifyToken, async (req, res) => {
-      const result = await UserCollection.find().toArray();
-      res.json(result);
-    });
-  } catch (error) {
-    console.error("Database connection error:", error);
+async function ensureCollections() {
+  if (productsCollection && addToCartCollection && userCollection) {
+    return { productsCollection, addToCartCollection, userCollection };
   }
+
+  if (!collectionsPromise) {
+    collectionsPromise = (async () => {
+      await getAuth();
+      const db = await getDb();
+      console.log("Successfully connected to MongoDB!");
+
+      productsCollection = db.collection("Products");
+      addToCartCollection = db.collection("Add_To_Cart");
+      userCollection = db.collection("user");
+
+      return { productsCollection, addToCartCollection, userCollection };
+    })();
+  }
+
+  return collectionsPromise;
 }
 
-run().catch(console.dir);
+// Products Routes
+app.get("/products/:id", async (req, res, next) => {
+  try {
+    const { productsCollection } = await ensureCollections();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const result = await productsCollection.findOne({
+      _id: new ObjectId(id),
+    });
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/products", async (req, res, next) => {
+  try {
+    const { productsCollection } = await ensureCollections();
+    const search = req.query.search;
+    const query = search ? { name: { $regex: search, $options: "i" } } : {};
+    const result = await productsCollection.find(query).toArray();
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// admin product delete
+app.delete("/products/:id", varifyToken, async (req, res, next) => {
+  try {
+    const { productsCollection } = await ensureCollections();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const result = await productsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/products/:id", varifyToken, async (req, res, next) => {
+  try {
+    const { productsCollection } = await ensureCollections();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const updateData = req.body;
+    const result = await productsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData },
+    );
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Cart Routes
+app.post("/cart", varifyToken, async (req, res, next) => {
+  try {
+    const { addToCartCollection } = await ensureCollections();
+    const data = req.body;
+    const result = await addToCartCollection.insertOne(data);
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/cart", varifyToken, async (req, res, next) => {
+  try {
+    const { addToCartCollection } = await ensureCollections();
+    const result = await addToCartCollection.find().toArray();
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/customars-cart/:email", varifyToken, async (req, res, next) => {
+  try {
+    const { addToCartCollection } = await ensureCollections();
+    const { email } = req.params;
+    const result = await addToCartCollection.find({ email: email }).toArray();
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/cart/:id", varifyToken, async (req, res, next) => {
+  try {
+    const { addToCartCollection } = await ensureCollections();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid cart id" });
+    }
+
+    const result = await addToCartCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/user/:email", varifyToken, async (req, res, next) => {
+  try {
+    const { userCollection } = await ensureCollections();
+    const { email } = req.params;
+    const result = await userCollection.findOne({ email });
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/user", varifyToken, async (req, res, next) => {
+  try {
+    const { userCollection } = await ensureCollections();
+    const result = await userCollection.find().toArray();
+    return res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get("/", async (req, res) => {
   res.json("hello world");
