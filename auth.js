@@ -3,62 +3,83 @@ import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { jwt } from "better-auth/plugins";
 import { getMongoClient, getDb } from "./db.js";
 
-const client = await getMongoClient();
-const db = await getDb();
-
 const isProduction = process.env.NODE_ENV === "production";
 
-const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL,
-  secret: process.env.BETTER_AUTH_SECRET,
+export let auth = null;
+let authPromise;
 
-  database: mongodbAdapter(db, { client }),
+export async function getAuth() {
+  if (auth) return auth;
 
-  plugins: [jwt()],
+  if (!authPromise) {
+    authPromise = (async () => {
+      const secret = process.env.BETTER_AUTH_SECRET;
+      if (!secret) {
+        throw new Error("BETTER_AUTH_SECRET is not configured.");
+      }
 
-  user: {
-    additionalFields: {
-      phone: {
-        type: "string",
-        required: false,
-        input: true,
-      },
-      location: {
-        type: "string",
-        required: false,
-        input: true,
-      },
-    },
-  },
+      const client = await getMongoClient();
+      const db = await getDb();
 
-  emailAndPassword: {
-    enabled: true,
-  },
+      auth = betterAuth({
+        baseURL:
+          process.env.BETTER_AUTH_URL ||
+          process.env.CLIENT_URL ||
+          "http://localhost:5173",
+        secret,
 
-  trustedOrigins: [
-    process.env.CLIENT_URL,
-    "http://localhost:5173",
-  ].filter(Boolean),
+        database: mongodbAdapter(db, { client }),
 
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    },
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    },
-  },
+        plugins: [jwt()],
 
-  advanced: {
-    useSecureCookies: isProduction,
-    defaultCookieAttributes: {
-      sameSite: isProduction ? "none" : "lax",
-      secure: isProduction,
-      httpOnly: true,
-    },
-  },
-});
+        user: {
+          additionalFields: {
+            phone: {
+              type: "string",
+              required: false,
+              input: true,
+            },
+            location: {
+              type: "string",
+              required: false,
+              input: true,
+            },
+          },
+        },
 
-export { auth };
+        emailAndPassword: {
+          enabled: true,
+        },
+
+        trustedOrigins: [
+          process.env.CLIENT_URL,
+          "http://localhost:5173",
+        ].filter(Boolean),
+
+        socialProviders: {
+          google: {
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          },
+          github: {
+            clientId: process.env.GITHUB_CLIENT_ID,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET,
+          },
+        },
+
+        advanced: {
+          useSecureCookies: isProduction,
+          defaultCookieAttributes: {
+            sameSite: isProduction ? "none" : "lax",
+            secure: isProduction,
+            httpOnly: true,
+          },
+        },
+      });
+
+      return auth;
+    })();
+  }
+
+  return authPromise;
+}
