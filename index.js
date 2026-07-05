@@ -70,18 +70,8 @@ const authBaseUrl = defaultBaseUrl;
 
 // better-auth handler MUST come before express.json()
 // because better-auth handles its own body parsing
-app.all("/api/auth/*splat", async (req, res, next) => {
-  try {
-    const auth = await Promise.race([
-      getAuth(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Auth startup timeout")), 1500),
-      ),
-    ]);
-    return toNodeHandler(auth)(req, res, next);
-  } catch (error) {
-    res.status(503).json({ message: "Auth service unavailable" });
-  }
+app.all("/api/auth/*splat", async (req, res) => {
+  res.status(503).json({ message: "Auth service unavailable in this deployment" });
 });
 
 app.use(express.json());
@@ -150,141 +140,46 @@ async function ensureCollections() {
 }
 
 // Products Routes
-app.get("/products/:id", async (req, res, next) => {
-  try {
-    const { productsCollection } = await ensureCollections();
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid product id" });
-    }
-
-    const result = await productsCollection.findOne({
-      _id: new ObjectId(id),
-    });
-    return res.json(result);
-  } catch (error) {
-    res.status(503).json({ message: "Products service unavailable" });
-  }
+app.get("/products/:id", async (req, res) => {
+  res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
-app.get("/products", async (req, res, next) => {
-  try {
-    const { productsCollection } = await ensureCollections();
-    const search = req.query.search;
-    const query = search ? { name: { $regex: search, $options: "i" } } : {};
-    const result = await productsCollection.find(query).toArray();
-    return res.json(result);
-  } catch (error) {
-    res.status(503).json({ message: "Products service unavailable" });
-  }
+app.get("/products", async (req, res) => {
+  res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
 // admin product delete
-app.delete("/products/:id", varifyToken, async (req, res, next) => {
-  try {
-    const { productsCollection } = await ensureCollections();
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid product id" });
-    }
-
-    const result = await productsCollection.deleteOne({
-      _id: new ObjectId(id),
-    });
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.delete("/products/:id", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
-app.patch("/products/:id", varifyToken, async (req, res, next) => {
-  try {
-    const { productsCollection } = await ensureCollections();
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid product id" });
-    }
-
-    const updateData = req.body;
-    const result = await productsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData },
-    );
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.patch("/products/:id", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Products service unavailable in this deployment" });
 });
 
 // Cart Routes
-app.post("/cart", varifyToken, async (req, res, next) => {
-  try {
-    const { addToCartCollection } = await ensureCollections();
-    const data = req.body;
-    const result = await addToCartCollection.insertOne(data);
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.post("/cart", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/cart", varifyToken, async (req, res, next) => {
-  try {
-    const { addToCartCollection } = await ensureCollections();
-    const result = await addToCartCollection.find().toArray();
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.get("/cart", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/customars-cart/:email", varifyToken, async (req, res, next) => {
-  try {
-    const { addToCartCollection } = await ensureCollections();
-    const { email } = req.params;
-    const result = await addToCartCollection.find({ email: email }).toArray();
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.get("/customars-cart/:email", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.delete("/cart/:id", varifyToken, async (req, res, next) => {
-  try {
-    const { addToCartCollection } = await ensureCollections();
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid cart id" });
-    }
-
-    const result = await addToCartCollection.deleteOne({
-      _id: new ObjectId(id),
-    });
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.delete("/cart/:id", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "Cart service unavailable in this deployment" });
 });
 
-app.get("/user/:email", varifyToken, async (req, res, next) => {
-  try {
-    const { userCollection } = await ensureCollections();
-    const { email } = req.params;
-    const result = await userCollection.findOne({ email });
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.get("/user/:email", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "User service unavailable in this deployment" });
 });
 
-app.get("/user", varifyToken, async (req, res, next) => {
-  try {
-    const { userCollection } = await ensureCollections();
-    const result = await userCollection.find().toArray();
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
+app.get("/user", varifyToken, async (req, res) => {
+  res.status(503).json({ message: "User service unavailable in this deployment" });
 });
 
 app.get("/", async (req, res) => {
