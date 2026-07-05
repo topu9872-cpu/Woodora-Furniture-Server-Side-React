@@ -23,8 +23,8 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.BETTER_AUTH_URL,
   defaultBaseUrl,
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
+  "https://woodora-furniture-client-side.vercel.app",
+  "https://woodora-furniture-client-side.vercel.app",
 ].filter(Boolean);
 
 app.use(

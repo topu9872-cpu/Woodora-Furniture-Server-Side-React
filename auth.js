@@ -25,7 +25,8 @@ export async function getAuth() {
       const getDefaultBaseUrl = () => {
         if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
         if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
-        if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`;
+        if (process.env.VERCEL_BRANCH_URL)
+          return `https://${process.env.VERCEL_BRANCH_URL}`;
         if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
         return "http://localhost:5173";
       };
@@ -69,10 +70,12 @@ export async function getAuth() {
           google: {
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            redirectURL: process.env.CLIENT_URL,
           },
           github: {
             clientId: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            redirectURL: process.env.CLIENT_URL,
           },
         },
 

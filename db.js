@@ -6,26 +6,22 @@ let cachedDb;
 export async function getMongoClient() {
   if (cachedClient) return cachedClient;
 
-  const mongoUri = process.env.MONGODB_URI;
-  if (!mongoUri) {
+  const uri = process.env.MONGODB_URI;
+
+  if (!uri) {
     throw new Error("MONGODB_URI is not configured.");
   }
 
-  cachedClient = new MongoClient(mongoUri, {
+  cachedClient = new MongoClient(uri, {
     serverApi: {
       version: ServerApiVersion.v1,
       strict: true,
       deprecationErrors: true,
     },
-    connectTimeoutMS: 1500,
-    socketTimeoutMS: 1500,
-    serverSelectionTimeoutMS: 1500,
   });
 
-  await Promise.race([
-    cachedClient.connect(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("MongoDB connection timeout")), 1500)),
-  ]);
+  await cachedClient.connect();
+
   return cachedClient;
 }
 
@@ -34,5 +30,6 @@ export async function getDb() {
 
   const client = await getMongoClient();
   cachedDb = client.db("Woodora-Furniture");
+
   return cachedDb;
 }
