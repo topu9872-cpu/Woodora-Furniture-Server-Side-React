@@ -1,6 +1,9 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
+import { toNodeHandler } from "better-auth/node";
+import { getAuth } from "./auth.js";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -44,8 +47,7 @@ app.use(
         callback(null, true);
         return;
       }
-
-      callback(null, false);
+      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -54,13 +56,39 @@ app.use(
   }),
 );
 
-app.all("/api/auth/*splat", (req, res) => {
-  res.status(503).json({ message: "Auth service unavailable in this deployment" });
+// Better-auth route handler
+app.all("/api/auth/*splat", async (req, res, next) => {
+  try {
+    const auth = await getAuth();
+    return toNodeHandler(auth)(req, res);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use(express.json());
 
-const varifyToken = (req, res, next) => {
+// Database connection context
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error("CRITICAL ERROR: MONGODB_URI is not defined in environment variables.");
+}
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+const db = client.db("Woodora-Furniture");
+const productsCollection = db.collection("Products");
+const AddTocartCollection = db.collection("Add_To_Cart");
+const UserCollection = db.collection("user");
+
+// Middleware
+const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -71,60 +99,170 @@ const varifyToken = (req, res, next) => {
   next();
 };
 
-app.get("/products/:id", (req, res) => {
-  res.json({ status: "ok", message: "Products service is temporarily unavailable", id: req.params.id });
+// --- Product Routes ---
+
+app.get("/products/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const result = await productsCollection.findOne({
+      _id: new ObjectId(id),
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/products", (req, res) => {
-  res.json({ status: "ok", message: "Products endpoint ready", data: [] });
+app.get("/products", async (req, res, next) => {
+  try {
+    const search = req.query.search;
+    const query = search ? { name: { $regex: search, $options: "i" } } : {};
+    const result = await productsCollection.find(query).toArray();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.delete("/products/:id", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Products service unavailable in this deployment" });
+app.delete("/products/:id", verifyToken, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const result = await productsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.patch("/products/:id", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Products service unavailable in this deployment" });
+app.patch("/products/:id", verifyToken, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const updateData = req.body;
+    delete updateData._id;
+
+    const result = await productsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.post("/cart", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Cart service unavailable in this deployment" });
+// --- Cart Routes ---
+
+app.post("/cart", verifyToken, async (req, res, next) => {
+  try {
+    const data = req.body;
+    const result = await AddTocartCollection.insertOne(data);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/cart", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Cart service unavailable in this deployment" });
+app.get("/cart", verifyToken, async (req, res, next) => {
+  try {
+    const result = await AddTocartCollection.find().toArray();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/customars-cart/:email", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Cart service unavailable in this deployment" });
+app.get("/customars-cart/:email", verifyToken, async (req, res, next) => {
+  try {
+    const { email } = req.params;
+    const result = await AddTocartCollection.find({ email: email }).toArray();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.delete("/cart/:id", varifyToken, (req, res) => {
-  res.status(503).json({ message: "Cart service unavailable in this deployment" });
+app.delete("/cart/:id", verifyToken, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const result = await AddTocartCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/user/:email", varifyToken, (req, res) => {
-  res.status(503).json({ message: "User service unavailable in this deployment" });
+// --- User Routes ---
+
+app.get("/user/:email", verifyToken, async (req, res, next) => {
+  try {
+    const email = req.params.email;
+    const result = await UserCollection.findOne({ email: email });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/user", varifyToken, (req, res) => {
-  res.status(503).json({ message: "User service unavailable in this deployment" });
+app.get("/user", verifyToken, async (req, res, next) => {
+  try {
+    const result = await UserCollection.find().toArray();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
+
+// --- System & Fallbacks ---
 
 app.get("/", (req, res) => {
-  res.json({ status: "ok", message: "Service is running", mode: process.env.VERCEL ? "vercel" : "local" });
-});
-
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({ message: "Internal server error" });
-});
-
-if (process.env.NODE_ENV !== "production") {
-  app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+  res.json({ 
+    status: "ok", 
+    message: "Service is running", 
+    mode: process.env.VERCEL ? "vercel" : "local" 
   });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error context:", err.message || err);
+  res.status(500).json({ message: err.message || "Internal server error" });
+});
+
+// Isolated lifecycle controller managing connection states and process hooks cleanly
+async function connectDB() {
+  try {
+    await client.connect();
+    console.log("MongoDB Connected Successfully");
+
+    // Only boot listen thread when running in clean independent execution modes
+    if (process.env.NODE_ENV !== "production") {
+      app.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
+      });
+    }
+  } catch (error) {
+    console.error("CRITICAL DATABASE INITIALIZATION ERROR:", error);
+    process.exit(1);
+  }
 }
+
+connectDB();
 
 export { app };
 export default app;

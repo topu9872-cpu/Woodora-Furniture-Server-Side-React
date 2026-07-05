@@ -18,6 +18,7 @@ export async function getAuth() {
         throw new Error("BETTER_AUTH_SECRET is not configured.");
       }
 
+      // Ensure DB references are cleanly awaited and instantiated
       const client = await getMongoClient();
       const db = await getDb();
 
@@ -35,7 +36,8 @@ export async function getAuth() {
         baseURL: defaultBaseUrl,
         secret,
 
-        database: mongodbAdapter(db, { client }),
+        // Fix: Pass the database instance context correctly
+        database: mongodbAdapter(db),
 
         plugins: [jwt()],
 
