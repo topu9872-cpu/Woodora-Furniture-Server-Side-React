@@ -72,10 +72,15 @@ const authBaseUrl = defaultBaseUrl;
 // because better-auth handles its own body parsing
 app.all("/api/auth/*splat", async (req, res, next) => {
   try {
-    const auth = await getAuth();
+    const auth = await Promise.race([
+      getAuth(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Auth startup timeout")), 1500),
+      ),
+    ]);
     return toNodeHandler(auth)(req, res, next);
   } catch (error) {
-    next(error);
+    res.status(503).json({ message: "Auth service unavailable" });
   }
 });
 
@@ -121,8 +126,13 @@ async function ensureCollections() {
 
   if (!collectionsPromise) {
     collectionsPromise = (async () => {
-      await getAuth();
-      const db = await getDb();
+      const db = await Promise.race([
+        getDb(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Database startup timeout")), 1500),
+        ),
+      ]);
+
       console.log("Successfully connected to MongoDB!");
 
       productsCollection = db.collection("Products");
@@ -130,7 +140,10 @@ async function ensureCollections() {
       userCollection = db.collection("user");
 
       return { productsCollection, addToCartCollection, userCollection };
-    })();
+    })().catch((error) => {
+      collectionsPromise = null;
+      throw error;
+    });
   }
 
   return collectionsPromise;
@@ -150,7 +163,7 @@ app.get("/products/:id", async (req, res, next) => {
     });
     return res.json(result);
   } catch (error) {
-    next(error);
+    res.status(503).json({ message: "Products service unavailable" });
   }
 });
 
@@ -162,7 +175,7 @@ app.get("/products", async (req, res, next) => {
     const result = await productsCollection.find(query).toArray();
     return res.json(result);
   } catch (error) {
-    next(error);
+    res.status(503).json({ message: "Products service unavailable" });
   }
 });
 
@@ -275,15 +288,7 @@ app.get("/user", varifyToken, async (req, res, next) => {
 });
 
 app.get("/", async (req, res) => {
-  try {
-    await Promise.race([
-      ensureCollections(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Database startup timeout")), 3000)),
-    ]);
-    res.json("hello world");
-  } catch (error) {
-    res.json({ status: "ok", message: "Service is warming up" });
-  }
+  res.json({ status: "ok", message: "Service is running" });
 });
 
 app.use((err, req, res, next) => {

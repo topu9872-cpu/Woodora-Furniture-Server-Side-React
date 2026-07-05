@@ -17,13 +17,14 @@ export async function getMongoClient() {
       strict: true,
       deprecationErrors: true,
     },
-    connectTimeoutMS: 5000,
-    socketTimeoutMS: 5000,
+    connectTimeoutMS: 1500,
+    socketTimeoutMS: 1500,
+    serverSelectionTimeoutMS: 1500,
   });
 
   await Promise.race([
     cachedClient.connect(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("MongoDB connection timeout")), 5000)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("MongoDB connection timeout")), 1500)),
   ]);
   return cachedClient;
 }
