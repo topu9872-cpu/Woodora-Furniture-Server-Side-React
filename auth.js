@@ -21,11 +21,18 @@ export async function getAuth() {
       const client = await getMongoClient();
       const db = await getDb();
 
+      const getDefaultBaseUrl = () => {
+        if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+        if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
+        if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`;
+        if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+        return "http://localhost:5173";
+      };
+
+      const defaultBaseUrl = getDefaultBaseUrl();
+
       auth = betterAuth({
-        baseURL:
-          process.env.BETTER_AUTH_URL ||
-          process.env.CLIENT_URL ||
-          "http://localhost:5173",
+        baseURL: defaultBaseUrl,
         secret,
 
         database: mongodbAdapter(db, { client }),

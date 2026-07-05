@@ -13,9 +13,47 @@ const port = process.env.PORT || 5000;
 
 app.set("trust proxy", 1);
 
+const getDefaultBaseUrl = () => {
+  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+  if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
+  if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:5173";
+};
+
+const defaultBaseUrl = getDefaultBaseUrl();
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.BETTER_AUTH_URL,
+  defaultBaseUrl,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [process.env.CLIENT_URL, "http://localhost:5173"].filter(Boolean),
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      const isAllowed = allowedOrigins.some(
+        (allowed) => normalizedOrigin === allowed.replace(/\/$/, ""),
+      );
+      const isVercelOrigin = /https:\/\/.*\.(vercel\.app|vercel\.dev)$/.test(
+        normalizedOrigin,
+      );
+
+      if (isAllowed || isVercelOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -28,8 +66,7 @@ app.use(
   }),
 );
 
-const authBaseUrl =
-  process.env.BETTER_AUTH_URL || process.env.CLIENT_URL || "http://localhost:5173";
+const authBaseUrl = defaultBaseUrl;
 
 // better-auth handler MUST come before express.json()
 // because better-auth handles its own body parsing
